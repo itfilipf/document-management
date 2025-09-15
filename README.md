@@ -9,6 +9,16 @@ The API project is a [Django/DRF](https://www.django-rest-framework.org/) projec
 2. `$ make fixtures` to create a small number of fixture file versions.
 3. `$ make serve` to start the development server on port 8001.
 4. `$ make test` to run the limited test suite via PyTest.
+
+### Testing the API with real db data
+You can use the provided Postman collection file to help you to test the API with real data.
+Before using the collection make sure that you have called management command `seed-data` to create some sample data.
+1. `$ make seed-data` django management command to create sample data for Alise and Bob.
+2. `$ make serve` to start the development server on port 8001.
+3. Import the Postman collection file from tests directory `postman_collection_import.json` into your Postman application
+4. Fill the collection variables and make requests
+
+
 ### Client Development 
 See the Readme [here](https://github.com/propylon/document-manager-assessment/blob/main/client/doc-manager/README.md)
 

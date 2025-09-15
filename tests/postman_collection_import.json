@@ -1,0 +1,141 @@
+{
+  "info": {
+    "name": "Document Manager API (Alice & Bob)",
+    "_postman_id": "12345678-abcd-ef12-3456-abcdef123456",
+    "description": "Postman collection for testing Document Manager API with Alice and Bob accounts (with /api/ prefix).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login (Alice)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice@example.com\",\n  \"password\": \"test1234\"\n}"
+            },
+            "url": { "raw": "http://localhost:8001/auth-token/", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["auth-token", ""] }
+          }
+        },
+        {
+          "name": "Login (Bob)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"bob@example.com\",\n  \"password\": \"test1234\"\n}"
+            },
+            "url": { "raw": "http://localhost:8001/auth-token/", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["auth-token", ""] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "List Documents (Alice)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{alice_token}}" }],
+            "url": { "raw": "http://localhost:8001/api/documents/?page=1&page_size=5", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api", "documents", ""] }
+          }
+        },
+        {
+          "name": "Download Latest (Alice - review.txt)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{alice_token}}" }],
+            "url": { "raw": "http://localhost:8001/api/documents/files/reviews/review.txt/", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api", "documents", "files", "reviews", "review.txt", ""] }
+          }
+        },
+        {
+          "name": "Download Revision 0 (Alice - review.txt)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{alice_token}}" }],
+            "url": {
+              "raw": "http://localhost:8001/api/documents/files/reviews/review.txt/?revision=0",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["api", "documents", "files", "reviews", "review.txt", ""],
+              "query": [{ "key": "revision", "value": "0" }]
+            }
+          }
+        },
+        {
+          "name": "Upload New (Alice - review.txt v2)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Token {{alice_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:8001/api/documents/files/reviews/review.txt/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["api", "documents", "files", "reviews", "review.txt", ""]
+            }
+          }
+        },
+        {
+          "name": "List Documents (Bob)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{bob_token}}" }],
+            "url": { "raw": "http://localhost:8001/api/documents/?page=1&page_size=5", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api", "documents", ""] }
+          }
+        },
+        {
+          "name": "Upload New (Bob - nda.txt v1)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Token {{bob_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:8001/api/documents/files/contracts/nda.txt/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["api", "documents", "files", "contracts", "nda.txt", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "CAS (Content Addressable Storage)",
+      "item": [
+        {
+          "name": "Get Document by Hash (Alice)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{alice_token}}" }],
+            "url": { "raw": "http://localhost:8001/api/documents/hash/{{alice_content_hash}}/", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api", "documents", "hash", "{{alice_content_hash}}", ""] }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "alice_token", "value": "" },
+    { "key": "bob_token", "value": "" },
+    { "key": "alice_content_hash", "value": "" }
+  ]
+}

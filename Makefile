@@ -89,3 +89,8 @@ fixture: build makemigrations migrate plain-fixture
 
 plain-fixture:
 	$(IN_ENV) django-admin load_file_fixtures
+
+seed-data: build makemigrations migrate plain-seed-data
+
+plain-seed-data:
+	$(IN_ENV) django-admin seed_data

@@ -1,8 +1,11 @@
-from django.db import models
+import hashlib
+
 from django.contrib.auth.models import AbstractUser
+from django.db import models
 from django.db.models import CharField, EmailField
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+
 
 class User(AbstractUser):
     """
@@ -34,3 +37,50 @@ class User(AbstractUser):
 class FileVersion(models.Model):
     file_name = models.fields.CharField(max_length=512)
     version_number = models.fields.IntegerField()
+
+
+class Document(models.Model):
+    """
+    Represents a single stored file (a revision of a logical document URL)
+    belonging to a user.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    url = models.CharField(
+        max_length=1024,
+        help_text="Logical document URL chosen by the user",
+    )
+    file = models.FileField(
+        upload_to="documents/",
+        help_text="The actual uploaded file content",
+    )
+    content_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+    )
+    version = models.ForeignKey(
+        "FileVersion",
+        on_delete=models.CASCADE,
+        related_name="documents",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "url", "version")
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        # Compute content hash if not already set
+        if self.file and not self.content_hash:
+            hasher = hashlib.sha256()
+            for chunk in self.file.chunks():
+                hasher.update(chunk)
+            self.content_hash = hasher.hexdigest()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.url} (v{self.version.version_number}) - {self.user.email}"
