@@ -18,6 +18,148 @@ Before using the collection make sure that you have called management command `s
 3. Import the Postman collection file from tests directory `postman_collection_import.json` into your Postman application
 4. Fill the collection variables and make requests
 
+### Create specific user using management command
+You can create a specific user using the provided management command `create-user-with-file`.
+
+You have to forward **email**, **password** and a **url** where created file will be stored.
+Example of crating a user:
+
+`$ make create-user-with-file email="johndoe@exmaple.com" password="secretpw" url="secret_files/secret.txt`
+# API Documentation
+
+All endpoints require authentication with a token in the header.
+
+## Authentication
+**POST** `/auth-token/`  
+Login with email + password.
+
+**Request Example:**
+```json
+{
+  "username": "alice@example.com",
+  "password": "test1234"
+}
+```
+**Response Example:**
+```json
+{
+  "token": "your_auth_token"
+}
+```
+**Possible HTTP Status Codes:**
+
+- **HTTP 200 OK**
+
+- **400 Bad Request** – Invalid username or password.
+
+
+## List Documents
+**GET** `/api/documents/`  
+
+Retrieve a paginated list of documents owned by the authenticated user.  
+Each document includes all available revisions.
+
+**Query Parameters:**
+- `page` *(optional, int)* – Page number (default: 1)
+- `page_size` *(optional, int)* – Number of items per page (default: 10, max: 100)
+
+**Response Example:**
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "url": "documents/reviews/review.pdf",
+      "revisions": [
+        {"file_name": "review.pdf", "version_number": 0, "content_hash": "abc123"},
+        {"file_name": "review.pdf", "version_number": 1, "content_hash": "def456"}
+      ]
+    },
+    {
+      "url": "documents/contracts/nda.docx",
+      "revisions": [
+        {"file_name": "nda.docx", "version_number": 0, "content_hash": "ghi789"}
+      ]
+    }
+  ]
+}
+```
+**Possible HTTP Status Codes:**
+
+- **200 OK**– Documents successfully retrieved.
+
+- **403 Forbidden** – Missing or invalid authentication token..
+
+## Upload Document
+**POST** `/api/documents/{url}/`  
+
+Upload a new document or a new revision of an existing document.  
+When uploading to the same `url`, the `version_number` is automatically incremented.  
+
+**Parameters:**
+- `file` *(required, multipart)* – The file to upload.
+
+**Response Example:**
+```json
+{
+  "id": 12,
+  "url": "docs/new.txt",
+  "user": "1",
+  "version": 0,
+  "content_hash": "9f2c..."
+}
+```
+**Possible HTTP Status Codes:**
+
+- **201 Created** – Document uploaded successfully (new file or new revision).
+
+- **400 Bad Request** – Missing file parameter or invalid request format.
+
+- **403 Forbidden** – Missing or invalid authentication token.
+
+## Download Document
+**GET** `/api/documents/{url}/`  
+
+Download the latest revision of a document or a specific revision by version number.  
+
+**Query Parameters:**
+- `revision` *(optional, int)* – Specific version number of the document.  
+  - If omitted, the latest revision is returned.  
+
+**Examples:**
+- `GET /api/documents/docs/new.txt/` → returns the latest revision  
+- `GET /api/documents/docs/new.txt/?revision=0` → returns the first revision  
+
+**Response:**  
+- Returns a file response with the correct filename and content.  
+
+**Possible HTTP Status Codes:**
+- **200 OK** – Document successfully retrieved.
+- **400 Bad Request** – Invalid revision parameter or bad request.
+- **403 Forbidden** – Missing or invalid authentication token.
+- **404 Not Found** – Document or specific revision not found.
+
+
+## Retrieve by Hash (CAS)
+**GET** `/api/documents/hash/{content_hash}/`  
+
+Retrieve a document directly by its unique content hash.  
+This supports **Content Addressable Storage (CAS)**
+A user can only access files they own, even if the hash is known.
+
+**Path Parameters:**
+- `content_hash` *(required, string)* – SHA-256 hash of the file content.
+
+**Response:**  
+- Returns a file response with the correct filename and content.
+
+**Possible HTTP Status Codes:**
+- **200 OK** – Document successfully retrieved by hash.
+- **403 Forbidden** –  Missing or invalid authentication token.
+- **404 Not Found** – No document with the given hash exists for the user or user can not see document.
+## File Endpoints
 
 ### Client Development 
 See the Readme [here](https://github.com/propylon/document-manager-assessment/blob/main/client/doc-manager/README.md)
