@@ -94,3 +94,8 @@ seed-data: build makemigrations migrate plain-seed-data
 
 plain-seed-data:
 	$(IN_ENV) django-admin seed_data
+
+create-user-with-file: build makemigrations migrate plain-create-user-with-file
+
+plain-create-user-with-file:
+	$(IN_ENV) django-admin create_user_with_file $(email) $(password) $(url)
