@@ -131,6 +131,46 @@
           }
         }
       ]
+    },
+    {
+      "name": "Sharing",
+      "item": [
+        {
+          "name": "Share Document with User (Alice grants Bob)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Token {{alice_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emails\": [\"bob@example.com\"]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8001/api/documents/hash/{{alice_content_hash}}/share/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["api", "documents", "hash", "{{alice_content_hash}}", "share", ""]
+            }
+          }
+        },
+        {
+          "name": "Bob Access Shared Document",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Token {{bob_token}}" }],
+            "url": {
+              "raw": "http://localhost:8001/api/documents/hash/{{alice_content_hash}}/",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["api", "documents", "hash", "{{alice_content_hash}}", ""]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
