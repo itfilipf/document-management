@@ -24,6 +24,8 @@ class DocumentRevisionSerializer(serializers.ModelSerializer):
 
     version_number = serializers.IntegerField(source="version.version_number")
     file_name = serializers.CharField(source="version.file_name")
+    shared_users = serializers.SerializerMethodField(read_only=True)
+
 
     class Meta:
         model = Document
@@ -33,7 +35,14 @@ class DocumentRevisionSerializer(serializers.ModelSerializer):
             "file_name",
             "content_hash",
             "created_at",
+            "shared_users"
         ]
+
+    def get_shared_users(self, obj):
+        return UserSerializer(
+            [share.shared_with for share in obj.shares.all()],
+            many=True
+        ).data
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -44,6 +53,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     user = serializers.StringRelatedField(read_only=True)  # shows email
     version = FileVersionSerializer(read_only=True)
+    shared_users = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Document
@@ -55,9 +65,15 @@ class DocumentSerializer(serializers.ModelSerializer):
             "version",
             "user",
             "created_at",
+            "shared_users",
         ]
-        read_only_fields = ["content_hash", "user", "created_at"]
+        read_only_fields = ["content_hash", "user", "created_at", "shared_users"]
 
+    def get_shared_users(self, obj):
+        return UserSerializer(
+            [share.shared_with for share in obj.shares.all()],
+            many=True
+        ).data
 
 class DocumentWithRevisionsSerializer(serializers.Serializer):
     """
