@@ -1,7 +1,8 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
-from propylon_document_manager.file_versions.models import FileVersion, Document
+from django.core.management.base import BaseCommand
+
+from propylon_document_manager.file_versions.models import FileVersion, Document, DocumentShare
 
 User = get_user_model()
 
@@ -43,3 +44,12 @@ class Command(BaseCommand):
             Document.objects.create(user=user, url=url2, file=file2, version=fv2)
 
             print(f"Documents successfully created for user {user.email}.")
+
+        shared_doc = (
+            Document.objects.filter(user=user1, url="files/reviews/review.txt")
+            .order_by("-version__version_number")
+            .first()
+        )
+        if shared_doc:
+            DocumentShare.objects.get_or_create(document=shared_doc, shared_with=user2)
+            print("Document successfully shared from Alice to Bob.")
