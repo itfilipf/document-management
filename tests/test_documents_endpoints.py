@@ -2,6 +2,7 @@ import io
 
 import pytest
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from .factories import UserFactory, DocumentFactory
 
@@ -125,7 +126,7 @@ def test_document_by_hash(api_client, user):
     other_doc = DocumentFactory(user=other_user, url="docs/other.txt", version__file_name="other.txt")
     url_other = reverse("api:document-by-hash", args=[other_doc.content_hash])
     response_other = api_client.get(url_other)
-    assert response_other.status_code == 404
+    assert response_other.status_code == 403
 
 
 # -----------------------------
@@ -133,14 +134,31 @@ def test_document_by_hash(api_client, user):
 # -----------------------------
 
 @pytest.mark.django_db
-def test_document_upload(api_client, user):
+def test_document_upload_duplicate_hash_rejected(api_client, user):
     url = reverse("api:document", kwargs={"url": "docs/new.txt"})
-    file_bytes = b"new content"
-    response = api_client.post(url, {"file": io.BytesIO(file_bytes)}, format="multipart")
+    file_bytes = b"same content"
 
-    assert response.status_code == 201
-    assert response.data["url"] == "docs/new.txt"
-    assert response.data["user"] == str(user)
+    file1 = io.BytesIO(file_bytes)
+    file1.name = "file1.txt"
+    resp1 = api_client.post(url, {"file": file1}, format="multipart")
+
+    assert resp1.status_code == 201
+    assert resp1.data["url"] == "docs/new.txt"
+    assert resp1.data["user"] == str(user)
+
+    file2 = io.BytesIO(file_bytes)  # same content
+    file2.name = "another_file.txt"
+    resp2 = api_client.post(url, {"file": file2}, format="multipart")
+
+    assert resp2.status_code == 400
+    assert "already exists" in resp2.data["detail"]
+
+    file3 = io.BytesIO(b"totally different content")
+    file3.name = "file3.txt"
+    resp3 = api_client.post(url, {"file": file3}, format="multipart")
+
+    assert resp3.status_code == 201
+    assert resp3.data["url"] == "docs/new.txt"
 
 
 # -----------------------------
@@ -183,3 +201,41 @@ def test_fetch_specific_revision(api_client, user):
 
     assert r0.status_code == 200
     assert r1.status_code == 200
+
+
+@pytest.mark.django_db
+def test_document_share_and_access_flow(api_client, user):
+    """
+    Ensure full document sharing flow:
+    - Owner can share a document with another user by email
+    - Shared user can access it by hash
+    - Non-shared user is denied
+    """
+
+    # Create additional users
+    shared_user = UserFactory(email="shared@example.com")
+    non_shared_user = UserFactory(email="noshares@example.com")
+
+    # Owner creates document
+    doc = DocumentFactory(user=user, url="docs/shared.txt", version__file_name="shared.txt")
+
+    # Owner shares with shared_user
+    share_url = reverse("api:document-share", args=[doc.content_hash])
+    response = api_client.post(share_url, {"emails": [shared_user.email]}, format="json")
+
+    assert response.status_code == 200
+    assert shared_user.email in response.data["added"]
+
+    # Shared user can access document by hash
+    shared_client = APIClient()
+    shared_client.force_authenticate(user=shared_user)
+    doc_url = reverse("api:document-by-hash", args=[doc.content_hash])
+    resp_shared = shared_client.get(doc_url)
+    assert resp_shared.status_code == 200
+    assert resp_shared.get("Content-Disposition").endswith("shared.txt\"")
+
+    # Non-shared user is denied
+    other_client = APIClient()
+    other_client.force_authenticate(user=non_shared_user)
+    resp_denied = other_client.get(doc_url)
+    assert resp_denied.status_code == 403
