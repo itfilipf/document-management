@@ -73,14 +73,22 @@ Each document includes all available revisions.
     {
       "url": "documents/reviews/review.pdf",
       "revisions": [
-        {"file_name": "review.pdf", "version_number": 0, "content_hash": "abc123"},
-        {"file_name": "review.pdf", "version_number": 1, "content_hash": "def456"}
+        {"file_name": "review.pdf", 
+          "version_number": 0, 
+          "content_hash": "abc123", 
+          "shared_users": [{"id": 2, "email": "bob@example.com", "name": "Bob"}]
+        },
+        {"file_name": "review.pdf",
+          "version_number": 1,
+          "content_hash": "def456",
+          "shared_users": []
+        }
       ]
     },
     {
       "url": "documents/contracts/nda.docx",
       "revisions": [
-        {"file_name": "nda.docx", "version_number": 0, "content_hash": "ghi789"}
+        {"file_name": "nda.docx", "version_number": 0, "content_hash": "ghi789", "shared_users":  []}
       ]
     }
   ]
@@ -108,7 +116,9 @@ When uploading to the same `url`, the `version_number` is automatically incremen
   "url": "docs/new.txt",
   "user": "1",
   "version": 0,
-  "content_hash": "9f2c..."
+  "content_hash": "9f2c...",
+  "shared_users": [
+  ]
 }
 ```
 **Possible HTTP Status Codes:**
@@ -159,6 +169,38 @@ A user can only access files they own, even if the hash is known.
 - **200 OK** – Document successfully retrieved by hash.
 - **403 Forbidden** –  Missing or invalid authentication token.
 - **404 Not Found** – No document with the given hash exists for the user or user can not see document.
+
+## Share Document Access by emails
+**POST** `/api/documents/hash/{content_hash}/share/`  
+
+Allows the document owner to share access with other users by email.  
+Only the owner of a document can update its sharing list.  
+
+**Path Parameters:**
+- `content_hash` *(required, string)* – SHA-256 hash of the document to share.
+
+**Body Parameters (JSON):**
+- `emails` *(required, array of strings)* – List of user emails to share the document with.  
+  - If the email corresponds to an existing user and is not already shared  -a new share is created.  
+  - If the email is already shared - nothing changes.  
+  - If an email was previously shared but is not included in the new list - the share is removed.  
+  - If an email does not correspond to a user in the system - it is returned in the `not_found` list.  
+
+**Request Example:**
+```json
+{
+  "emails": ["bob@example.com", "carol@example.com"]
+}
+```
+**Response Example:**
+```json
+{
+    "shared_with": ["bob@example.com",],
+    "not_found": ["carol@example.com",],
+    "removed": ["john@example.com",]
+ }
+ ```
+
 ## File Endpoints
 
 ### Client Development 
