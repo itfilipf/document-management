@@ -3,12 +3,14 @@ from rest_framework.mixins import RetrieveModelMixin, ListModelMixin
 from rest_framework.viewsets import GenericViewSet
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from ..models import FileVersion, Document
+from ..models import FileVersion, Document, DocumentShare, User
 from .serializers import FileVersionSerializer, DocumentWithRevisionsSerializer, DocumentSerializer
 from rest_framework.response import Response
 from django.http import FileResponse
-
+from rest_framework import status
 from ..pagination import StandardResultsSetPagination
+from django.db import models, transaction
+import hashlib
 
 
 class FileVersionViewSet(RetrieveModelMixin, ListModelMixin, GenericViewSet):
@@ -25,9 +27,21 @@ class DocumentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, url):
-        """Upload a new document revision at the given URL."""
         user = request.user
         uploaded_file = request.FILES["file"]
+
+        # Compute hash first
+        hasher = hashlib.sha256()
+        for chunk in uploaded_file.chunks():
+            hasher.update(chunk)
+        file_hash = hasher.hexdigest()
+
+        # Check if any document with this hash already exists for same user & url
+        if Document.objects.filter(user=user, url=url, content_hash=file_hash).exists():
+            return Response(
+                {"detail": "This file already exists for this URL (duplicate content)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Determine next version number
         last_doc = (
@@ -41,9 +55,10 @@ class DocumentView(APIView):
         else:
             version_number = 0
 
-        # Ensure file_name stays consistent
+        # Create FileVersion
         file_version = FileVersion.objects.create(
-            file_name=uploaded_file.name, version_number=version_number
+            file_name=uploaded_file.name,
+            version_number=version_number,
         )
 
         # Save Document
@@ -52,10 +67,12 @@ class DocumentView(APIView):
             url=url,
             file=uploaded_file,
             version=file_version,
+            content_hash=file_hash,  # reuse computed hash
         )
 
         serializer = DocumentSerializer(document)
-        return Response(serializer.data, status=201)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
     def get(self, request, url):
         """Retrieve latest or specific revision of a document."""
@@ -75,13 +92,22 @@ class DocumentView(APIView):
 
 
 class DocumentByHashView(APIView):
-    """Retrieve a document by its content hash (CAS)."""
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request, content_hash):
         user = request.user
-        doc = get_object_or_404(Document, user=user, content_hash=content_hash)
+        doc = (
+            Document.objects
+            .filter(content_hash=content_hash)
+            .filter(models.Q(user=request.user) | models.Q(shares__shared_with=request.user))
+            .first()
+        )
+        if not doc:
+            return Response({"detail": "Not authorized"}, status=403)
+        # Allow if owner or explicitly shared
+        if doc.user != user and not DocumentShare.objects.filter(document=doc, shared_with=user).exists():
+            return Response({"detail": "Not authorized"}, status=403)
+
         return FileResponse(doc.file, as_attachment=True, filename=doc.version.file_name)
 
 
@@ -111,3 +137,33 @@ class DocumentListView(APIView):
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(result, request, view=self)
         return paginator.get_paginated_response(page)
+
+
+class DocumentShareView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, content_hash):
+        doc = get_object_or_404(Document, content_hash=content_hash, user=request.user)
+        emails = request.data.get("emails", [])
+        if not isinstance(emails, list):
+            return Response({"detail": "emails must be a list"}, status=400)
+
+        added, removed, not_found = [], [], []
+        with transaction.atomic():
+            current_shares = {s.shared_with.email: s for s in doc.shares.all()}
+
+            for email in emails:
+                try:
+                    target_user = User.objects.get(email=email)
+                    if email not in current_shares:
+                        DocumentShare.objects.create(document=doc, shared_with=target_user)
+                        added.append(email)
+                except User.DoesNotExist:
+                    not_found.append(email)
+
+            for email, share in current_shares.items():
+                if email not in emails:
+                    share.delete()
+                    removed.append(email)
+
+        return Response({"added": added, "removed": removed, "not_found": not_found})
