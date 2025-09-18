@@ -104,7 +104,9 @@ Each document includes all available revisions.
 **POST** `/api/documents/{url}/`  
 
 Upload a new document or a new revision of an existing document.  
-When uploading to the same `url`, the `version_number` is automatically incremented.  
+When uploading to the same `url`, the `version_number` is automatically incremented.
+If two documents on same url have the same hash value returned HTTP status code will be 400
+with message about duplicated file.
 
 **Parameters:**
 - `file` *(required, multipart)* – The file to upload.
@@ -125,7 +127,7 @@ When uploading to the same `url`, the `version_number` is automatically incremen
 
 - **201 Created** – Document uploaded successfully (new file or new revision).
 
-- **400 Bad Request** – Missing file parameter or invalid request format.
+- **400 Bad Request** – Missing file parameter or invalid request format, or duplicated file.
 
 - **403 Forbidden** – Missing or invalid authentication token.
 
