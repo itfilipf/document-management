@@ -72,6 +72,12 @@ class Document(models.Model):
     class Meta:
         unique_together = ("user", "url", "version")
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "url", "content_hash"],
+                name="unique_doc_per_hash"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         # Compute content hash if not already set
@@ -84,3 +90,9 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.url} (v{self.version.version_number}) - {self.user.email}"
+
+
+class DocumentShare(models.Model):
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="shares")
+    shared_with = models.ForeignKey(User, on_delete=models.CASCADE, related_name="shares")
+    created_at = models.DateTimeField(auto_now_add=True)
