@@ -146,21 +146,20 @@ class DocumentShareView(APIView):
             return Response({"detail": "emails must be a list"}, status=400)
 
         added, removed, not_found = [], [], []
-        with transaction.atomic():
-            current_shares = {s.shared_with.email: s for s in doc.shares.all()}
+        current_shares = {s.shared_with.email: s for s in doc.shares.all()}
 
-            for email in emails:
-                try:
-                    target_user = User.objects.get(email=email)
-                    if email not in current_shares:
-                        DocumentShare.objects.create(document=doc, shared_with=target_user)
-                        added.append(email)
-                except User.DoesNotExist:
-                    not_found.append(email)
+        for email in emails:
+            try:
+                target_user = User.objects.get(email=email)
+                if email not in current_shares:
+                    DocumentShare.objects.create(document=doc, shared_with=target_user)
+                    added.append(email)
+            except User.DoesNotExist:
+                not_found.append(email)
 
-            for email, share in current_shares.items():
-                if email not in emails:
-                    share.delete()
-                    removed.append(email)
+        for email, share in current_shares.items():
+            if email not in emails:
+                share.delete()
+                removed.append(email)
 
         return Response({"added": added, "removed": removed, "not_found": not_found})
