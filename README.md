@@ -169,8 +169,7 @@ A user can only access files they own, even if the hash is known.
 
 **Possible HTTP Status Codes:**
 - **200 OK** – Document successfully retrieved by hash.
-- **403 Forbidden** –  Missing or invalid authentication token.
-- **404 Not Found** – No document with the given hash exists for the user or user can not see document.
+- **403 Forbidden** –  No document with the given hash exists for the user or user can not see document.
 
 ## Share Document Access by emails
 **POST** `/api/documents/hash/{content_hash}/share/`  
