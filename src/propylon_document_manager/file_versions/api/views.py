@@ -104,9 +104,6 @@ class DocumentByHashView(APIView):
         )
         if not doc:
             return Response({"detail": "Not authorized"}, status=403)
-        # Allow if owner or explicitly shared
-        if doc.user != user and not DocumentShare.objects.filter(document=doc, shared_with=user).exists():
-            return Response({"detail": "Not authorized"}, status=403)
 
         return FileResponse(doc.file, as_attachment=True, filename=doc.version.file_name)
 
